@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>Student Count by Country</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; }
+    table { border-collapse: collapse; width: 50%; margin-top: 20px; }
+    th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+    th { background-color: #f2f2f2; }
+  </style>
+</head>
+<body>
+  <h1>Student Count by Country</h1>
+  <p id="status">Loading data from Blob CSV...</p>
+
+  <table id="studentTable" style="display:none;">
+    <thead>
+      <tr>
+        <th>Country</th>
+        <th>Student Count</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <script>
+    // ✅ Your Blob SAS URL (CSV file)
+    const csvUrl = "https://vignesh2004.blob.core.windows.net/student-data/student-dataset.csv?sp=r&st=2026-01-30T14:28:34Z&se=2026-02-07T22:43:34Z&spr=https&sv=2024-11-04&sr=b&sig=353gMP2HHbGdHoHt4yJH1qHnsXV7xe0oJp5BK9Xdcys%3D";
+
+    function parseCSV(csvText) {
+      const lines = csvText.trim().split(/\r?\n/);
+      const headers = lines[0].split(",").map(h => h.trim());
+      const rows = [];
+
+      for (let i = 1; i < lines.length; i++) {
+        const values = lines[i].split(",").map(v => v.trim());
+        const row = {};
+        headers.forEach((h, idx) => row[h] = values[idx] ?? "");
+        rows.push(row);
+      }
+      return rows;
+    }
+
+    async function fetchStudentData() {
+      const statusEl = document.getElementById("status");
+      const table = document.getElementById("studentTable");
+      const tbody = document.querySelector("#studentTable tbody");
+
+      try {
+        const response = await fetch(csvUrl);
+        if (!response.ok) throw new Error("Failed to fetch CSV. HTTP " + response.status);
+
+        const csvText = await response.text();
+        const rows = parseCSV(csvText);
+
+        // Count students by Country
+        const counts = {};
+        rows.forEach(r => {
+          const country = (r["Country"] && r["Country"].length > 0) ? r["Country"] : "Unknown";
+          counts[country] = (counts[country] || 0) + 1;
+        });
+
+        // Sort by count descending
+        const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+
+        // Populate table
+        tbody.innerHTML = "";
+        sorted.forEach(([country, count]) => {
+          const tr = document.createElement("tr");
+          tr.innerHTML = `<td>${country}</td><td>${count}</td>`;
+          tbody.appendChild(tr);
+        });
+
+        statusEl.innerText = `Loaded ${rows.length} students from CSV`;
+        table.style.display = "table";
+
+      } catch (error) {
+        console.error("Error:", error);
+        statusEl.innerText = "Error loading data: " + error.message;
+        table.style.display = "none";
+      }
+    }
+
+    fetchStudentData();
+  </script>
+</body>
+</html>
